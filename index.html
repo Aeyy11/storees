@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Store System</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: #f4f4f4;
+  padding: 20px;
+}
+
+.container {
+  max-width: 600px;
+  margin: auto;
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+h1 {
+  text-align: center;
+}
+
+input, button {
+  padding: 10px;
+  margin: 5px;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: #007bff;
+  color: white;
+  border-radius: 5px;
+}
+
+button:hover {
+  background: #0056b3;
+}
+
+.delete {
+  background: red;
+}
+
+.edit {
+  background: orange;
+}
+
+.top-bar {
+  display: flex;
+  gap: 10px;
+}
+
+.search {
+  flex: 1;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+li {
+  background: #eee;
+  margin: 5px 0;
+  padding: 10px;
+  border-radius: 5px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h1>🛒 Store System</h1>
+
+  <div class="top-bar">
+    <input type="text" id="search" class="search" placeholder="Search product...">
+  </div>
+
+  <input type="text" id="name" placeholder="Product Name">
+  <input type="number" id="price" placeholder="Price">
+  <button onclick="addProduct()">Add Product</button>
+
+  <ul id="list"></ul>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { 
+  getFirestore, collection, addDoc, onSnapshot, 
+  deleteDoc, doc, updateDoc 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// 🔥 YOUR CONFIG HERE
+const firebaseConfig = {
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let products = [];
+
+// ADD
+window.addProduct = async function () {
+  const name = nameInput.value;
+  const price = priceInput.value;
+
+  if (!name || !price) return alert("Fill all fields!");
+
+  await addDoc(collection(db, "products"), { name, price });
+
+  nameInput.value = "";
+  priceInput.value = "";
+};
+
+// DELETE
+window.deleteProduct = async function (id) {
+  await deleteDoc(doc(db, "products", id));
+};
+
+// EDIT
+window.editProduct = async function (id, oldName, oldPrice) {
+  const newName = prompt("Edit name:", oldName);
+  const newPrice = prompt("Edit price:", oldPrice);
+
+  if (!newName || !newPrice) return;
+
+  await updateDoc(doc(db, "products", id), {
+    name: newName,
+    price: newPrice
+  });
+};
+
+// REAL-TIME LOAD
+onSnapshot(collection(db, "products"), (snapshot) => {
+  products = [];
+  snapshot.forEach(docSnap => {
+    products.push({ id: docSnap.id, ...docSnap.data() });
+  });
+  displayProducts(products);
+});
+
+// DISPLAY
+function displayProducts(data) {
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+
+  data.forEach(p => {
+    list.innerHTML += `
+      <li>
+        <b>${p.name}</b> - ₱${p.price}
+        <br>
+        <button class="edit" onclick="editProduct('${p.id}','${p.name}','${p.price}')">Edit</button>
+        <button class="delete" onclick="deleteProduct('${p.id}')">Delete</button>
+      </li>
+    `;
+  });
+}
+
+// SEARCH
+document.getElementById("search").addEventListener("input", function () {
+  const value = this.value.toLowerCase();
+
+  const filtered = products.filter(p =>
+    p.name.toLowerCase().includes(value)
+  );
+
+  displayProducts(filtered);
+});
+
+const nameInput = document.getElementById("name");
+const priceInput = document.getElementById("price");
+</script>
+
+</body>
+</html>
